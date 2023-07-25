@@ -1,0 +1,144 @@
+version: "3.8"
+
+networks:
+  inception:
+    driver: bridge
+
+volumes:
+  mariadb_v:
+    name: mariadb_v
+    driver: local
+    driver_opts:
+      device: /Users/laendrun/data/mariadb
+      type: none
+      o: bind
+  wordpress_v:
+    name: wordpress_v
+    driver: local
+    driver_opts:
+      device: /Users/laendrun/data/wordpress/
+      type: none
+      o: bind
+  static_v:
+    name: static_v
+    driver: local
+    driver_opts:
+      device: /Users/laendrun/data/static/
+      type: none
+      o: bind
+  minecraft_v:
+    name: minecraft_v
+    driver: local
+    driver_opts:
+      device: /Users/laendrun/data/minecraft/
+      type: none
+      o: bind
+
+services:
+  nginx:
+    build: ./requirements/nginx
+    image: nginx_i
+    container_name: nginx_c
+    ports:
+      - "443:443"
+    env_file:
+      - .env
+    networks:
+      - inception
+    restart: on-failure
+    volumes:
+      - wordpress_v:/var/www/html
+    depends_on: 
+      - wordpress
+
+  mariadb:
+    build: ./requirements/mariadb
+    image: mariadb_i
+    container_name: mariadb_c
+    env_file:
+      - .env
+    networks:
+      - inception
+    volumes:
+      - mariadb_v:/var/lib/mysql
+    restart: on-failure
+
+  wordpress:
+    build: ./requirements/wordpress
+    image: wordpress_i
+    container_name: wordpress_c
+    env_file:
+      - .env
+    networks:
+      - inception
+    volumes:
+      - wordpress_v:/var/www/html
+    restart: on-failure
+    depends_on:
+      - redis
+      - mariadb
+
+  redis:
+    build: ./requirements/bonus/redis
+    image: redis_i
+    container_name: redis_c
+    env_file:
+      - .env
+    networks:
+      - inception
+    restart: on-failure
+  
+  adminer:
+    build: ./requirements/bonus/adminer
+    image: adminer_i
+    container_name: adminer_c
+    env_file:
+      - .env
+    ports:
+      - "8080:80"
+    networks:
+      - inception
+    restart: on-failure
+
+  ftp:
+    build: ./requirements/bonus/ftp
+    image: ftp_i
+    container_name: ftp_c
+    env_file:
+      - .env
+    ports:
+      - '20-21:20-21/tcp'
+      - '40000-40009:40000-40009/tcp'
+    networks:
+      - inception
+    volumes:
+      - wordpress_v:/var/data
+    restart: on-failure
+
+  static:
+    build: ./requirements/bonus/static
+    image: static_i
+    container_name: static_c
+    env_file:
+      - .env
+    ports:
+      - "8090:80"
+    networks:
+      - inception
+    volumes:
+      - static_v:/var/www/html
+    restart: on-failure
+
+  minecraft:
+    build: ./requirements/bonus/minecraft
+    image: minecraft_i
+    container_name: minecraft_c
+    env_file:
+      - .env
+    ports:
+      - "25565:25565"
+    networks:
+      - inception
+    volumes:
+      - minecraft_v:/var/data
+    restart: on-failure
